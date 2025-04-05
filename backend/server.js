@@ -2,6 +2,39 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("./models/User"); // Ensure this path is correct
+const cors = require('cors');
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const axios = require("axios");
+
+dotenv.config();
+
+const app = express();
+const medicineRoutes = require("./routes/medicine");
+const PORT = process.env.PORT || 5000;
+const MONGODB_URI = process.env.MONGODB_URI;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+app.use(express.json());
+app.use(cors());
+
+const corsOptions = {
+  origin: 'http://localhost:3000', // Your Next.js frontend URL
+  credentials: true, // If using cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+async function main() {
+  try {
+    await mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+    console.log("✅ MongoDB connection successful");
+  } catch (err) {
+    console.error("❌ MongoDB connection error:", err);
+  }
+}
+
+main().catch(console.error);
 
 // Registration Route
 app.post("/api/auth/register", async (req, res) => {
@@ -158,8 +191,7 @@ app.use((req, res) => {
   });
 });
 
-// Start Server
-const PORT = process.env.PORT || 5000; // Default to 5000 if PORT not set in .env
+// Default to 5000 if PORT not set in .env
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

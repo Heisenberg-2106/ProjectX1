@@ -33,7 +33,7 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? `${API_BASE_URL}/login` : `${API_BASE_URL}/register`;
+      const endpoint = isLogin ? `${API_BASE_URL}/api/auth/login` : `${API_BASE_URL}/api/auth/register`;
       const response = await axios.post(endpoint, formData, {
         headers: {
           "Content-Type": "application/json",

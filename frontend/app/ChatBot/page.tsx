@@ -21,7 +21,7 @@ export default function Home() {
         content: m.content,
       }));
 
-      const res = await axios.post("http://localhost:4000/chat", {
+      const res = await axios.post("http://localhost:5000/chat", {
         message: input,
         history,
       });
