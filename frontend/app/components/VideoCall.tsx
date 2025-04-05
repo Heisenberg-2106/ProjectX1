@@ -1,83 +1,82 @@
 "use client";
+import { useEffect, useRef, useCallback } from "react";
+import Daily, { DailyCall } from "@daily-co/daily-js";
 
-import { useEffect, useRef, useState } from "react";
-import DailyIframe, { DailyCall } from "@daily-co/daily-js";
+// Define props interface for TypeScript
+interface VideoCallProps {
+  roomUrl: string;
+  onParticipantChange: (count: number) => void;
+}
 
-export default function VideoCall({ roomUrl }: { roomUrl: string }) {
-    const previewVideoRef = useRef<HTMLVideoElement>(null);
-    const iframeContainerRef = useRef<HTMLDivElement>(null);
-    const callRef = useRef<DailyCall | null>(null);
-    const [hasJoined, setHasJoined] = useState(false);
+export default function VideoCall({ roomUrl, onParticipantChange }: VideoCallProps) {
+  const videoRef = useRef<HTMLDivElement>(null);
+  const callObjectRef = useRef<DailyCall | null>(null);
 
-    const getLocalVideoStream = (call: DailyCall): MediaStream | null => {
-        const videoTrack = call.participants().local?.tracks?.video;
-        if (videoTrack?.state === "playable" && videoTrack?.persistentTrack) {
-            return new MediaStream([videoTrack.persistentTrack]);
-        }
-        return null;
+  // Memoize participant update handler
+  const handleParticipantUpdate = useCallback(() => {
+    if (!callObjectRef.current) return;
+    const participants = callObjectRef.current.participants();
+    const participantCount = Object.keys(participants).length;
+    onParticipantChange(participantCount);
+  }, [onParticipantChange]);
+
+  useEffect(() => {
+    if (!roomUrl || !videoRef.current) return;
+
+    // Initialize Daily call object
+    const callObject = Daily.createCallObject({
+      videoSource: true, // Enable video
+      audioSource: true, // Enable audio
+    });
+    callObjectRef.current = callObject;
+
+    // Join the room
+    callObject
+      .join({ url: roomUrl })
+      .then(() => {
+        console.log("Joined room successfully:", roomUrl);
+      })
+      .catch((error) => {
+        console.error("Failed to join room:", error);
+      });
+
+    // Handle participant events
+    callObject.on("participant-joined", handleParticipantUpdate);
+    callObject.on("participant-updated", handleParticipantUpdate);
+    callObject.on("participant-left", handleParticipantUpdate);
+
+    // Handle errors
+    callObject.on("error", (error) => {
+      console.error("Daily.co error:", error);
+    });
+
+    // Render local participant's video
+    const localParticipant = callObject.participants().local;
+    if (localParticipant && videoRef.current) {
+      const videoElement = document.createElement("video");
+      videoElement.autoplay = true;
+      videoElement.playsInline = true;
+      videoElement.srcObject = localParticipant.videoTrack
+        ? new MediaStream([localParticipant.videoTrack])
+        : null;
+      videoRef.current.appendChild(videoElement);
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (callObjectRef.current) {
+        callObjectRef.current.destroy();
+        callObjectRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.innerHTML = ""; // Clear video elements
+      }
     };
+  }, [roomUrl, handleParticipantUpdate]);
 
-    useEffect(() => {
-        const call = DailyIframe.createCallObject();
-        callRef.current = call;
-
-        call.startCamera().then(() => {
-            const stream = getLocalVideoStream(call);
-            if (stream && previewVideoRef.current) {
-                previewVideoRef.current.srcObject = stream;
-                previewVideoRef.current.play().catch(console.error);
-            }
-        });
-
-        return () => {
-            call.leave(); // leave any preview room/camera session
-            call.destroy(); // clean up
-        };
-    }, []);
-
-    const handleJoinCall = () => {
-        // Cleanup preview
-        callRef.current?.leave();
-        callRef.current?.destroy();
-
-        // Create iframe and join call
-        const iframe = DailyIframe.createFrame(iframeContainerRef.current!, {
-            showLeaveButton: true,
-            iframeStyle: {
-                width: "100%",
-                height: "100%",
-                border: "0",
-                borderRadius: "1rem",
-            },
-            userName: "Guest",
-            showFullscreenButton: true,
-        });
-
-        iframe.join({ url: roomUrl });
-        setHasJoined(true);
-    };
-
-    return (
-        <div className="w-full h-[75vh] bg-gray-900 rounded-2xl shadow-2xl overflow-hidden p-4">
-            {!hasJoined ? (
-                <div className="flex flex-col justify-center items-center h-full gap-6">
-                    <video
-                        ref={previewVideoRef}
-                        className="w-2/3 max-w-xl rounded-lg shadow-md"
-                        muted
-                        playsInline
-                        autoPlay
-                    />
-                    <button
-                        onClick={handleJoinCall}
-                        className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl text-lg font-semibold transition"
-                    >
-                        Join the Call
-                    </button>
-                </div>
-            ) : (
-                <div ref={iframeContainerRef} className="w-full h-full" />
-            )}
-        </div>
-    );
+  return (
+    <div className="relative w-full h-96 bg-black">
+      <div ref={videoRef} className="w-full h-full" />
+    </div>
+  );
 }
