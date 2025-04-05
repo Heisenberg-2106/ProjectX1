@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import './globals.css'
 
+
 export default function Home() {
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white">

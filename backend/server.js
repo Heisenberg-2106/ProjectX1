@@ -10,7 +10,9 @@ app.post("/api/auth/register", async (req, res) => {
 
     // Validate input
     if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields (username, email, password) are required" });
+      return res.status(400).json({
+        message: "All fields (username, email, password) are required",
+      });
     }
 
     // Check for existing user
@@ -80,16 +82,80 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-app.use('/medicines', medicineRoutes);
+// Medicine API Routes
+app.use("/medicines", medicineRoutes);
 
-// Root Route for Testing
-app.get('/', (req, res) => {
-  res.send('Server is running on port 3000');
+// Chatbot Route
+app.post("/chat", async (req, res) => {
+  const { message, history } = req.body;
+
+  const messages = [...history, { role: "user", content: message }];
+
+  try {
+    const response = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        model: "mistralai/mistral-7b-instruct",
+        messages: messages,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const reply = response.data.choices[0].message.content;
+    res.json({ reply });
+  } catch (err) {
+    console.error("❌ Error calling OpenRouter API:", err?.response?.data || err.message);
+    res.status(500).json({ error: "Failed to get response from AI model" });
+  }
 });
 
-// 404 Handler (Catch-all for undefined routes)
+// Summary Route
+app.post("/summary", async (req, res) => {
+  const { history } = req.body;
+
+  const messages = [
+    { role: "system", content: "Summarize this medical conversation for a doctor." },
+    ...history,
+  ];
+
+  try {
+    const response = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        model: "mistralai/mistral-7b-instruct",
+        messages: messages,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const summary = response.data.choices[0].message.content;
+    res.json({ summary });
+  } catch (err) {
+    console.error("❌ Error calling summary API:", err?.response?.data || err.message);
+    res.status(500).json({ error: "Failed to summarize conversation" });
+  }
+});
+
+// Root Route
+app.get("/", (req, res) => {
+  res.send("Server is running on port 3000");
+});
+
+// Catch-All Route for 404s
 app.use((req, res) => {
-  res.status(404).json({ message: `Route ${req.method} ${req.originalUrl} not found` });
+  res.status(404).json({
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+  });
 });
 
 // Start Server
