@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@100mslive/react-sdk": "^0.10.33",
+    "@100mslive/react-ui": "^0.8.9",
     "@daily-co/daily-js": "^0.77.0",
     "axios": "^1.8.4",
     "next": "^15.2.4",
