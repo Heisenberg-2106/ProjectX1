@@ -1,13 +1,13 @@
 export default function Hero() {
     return (
-        <section className="bg-blue-200 py-2 px-6">
+        <section className="bg-gradient-to-r from-blue-100 to-green-50">
             <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-                        Bringing Healthcare to Your Fingertips
+                    Revolutionizing Healthcare, One Click at a Time
                     </h1>
                     <p className="text-gray-600 mb-6 text-lg">
-                        Access quality medical care anytime, anywhere with AI-powered diagnostics and virtual consultations.
+                    Get instant access to trusted doctors, smart AI-powered diagnostics, and seamless virtual consultations — anytime, anywhere. Because your health deserves the smartest care.
                     </p>
                     <button className="bg-green-500 text-white font-semibold px-6 py-2 rounded-full hover:bg-green-600 transition ">
                         Check Up

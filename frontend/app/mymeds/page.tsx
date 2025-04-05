@@ -1,9 +1,10 @@
 "use client";
-
+import "@/globals.css"
 import { useState, useEffect } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
+import Link from "next/link";
 
 interface Medicine {
   _id?: string;
@@ -14,7 +15,7 @@ interface Medicine {
   mealTime: 'before' | 'after' | 'anytime';
 }
 
-const API_BASE_URL = 'http://localhost:3000'; // Adjust if PORT is different
+const API_BASE_URL = 'http://localhost:3000';
 
 export default function MyMedsPage() {
   const [medicine, setMedicine] = useState('');
@@ -26,22 +27,20 @@ export default function MyMedsPage() {
   const [timeouts, setTimeouts] = useState<NodeJS.Timeout[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null); // Store JWT token
+  const [token, setToken] = useState<string | null>(null);
 
-  // Check for token on mount (e.g., from localStorage)
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
     if (storedToken) {
       setToken(storedToken);
     } else {
       toast.error('Please log in to access your medicines');
-      // Optionally redirect to login page
     }
   }, []);
 
   useEffect(() => {
     const fetchMedicines = async () => {
-      if (!token) return; // Skip if not authenticated
+      if (!token) return;
       setLoading(true);
       try {
         const response = await axios.get(`${API_BASE_URL}/medicines`, {
@@ -50,15 +49,7 @@ export default function MyMedsPage() {
         setMedicines(response.data);
         response.data.forEach((med: Medicine) => scheduleNotifications(med));
       } catch (error: any) {
-        console.error('Error fetching medicines:', {
-          message: error.message || 'No message',
-          code: error.code || 'No code',
-          response: error.response ? {
-            status: error.response.status,
-            data: error.response.data,
-            headers: error.response.headers,
-          } : 'No response',
-        });
+        console.error('Error fetching medicines:', error);
         toast.error('Failed to load medicines');
       } finally {
         setLoading(false);
@@ -69,7 +60,7 @@ export default function MyMedsPage() {
     return () => {
       timeouts.forEach(timeout => clearTimeout(timeout));
     };
-  }, [token]); // Re-run when token changes
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,15 +119,7 @@ export default function MyMedsPage() {
       setMealTime('anytime');
       setEditingId(null);
     } catch (error: any) {
-      console.error('Error saving medicine:', {
-        message: error.message || 'No message',
-        code: error.code || 'No code',
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers,
-        } : 'No response',
-      });
+      console.error('Error saving medicine:', error);
       toast.error(`Failed to ${editingId ? 'update' : 'add'} medicine`);
     } finally {
       setLoading(false);
@@ -159,22 +142,13 @@ export default function MyMedsPage() {
       setMedicines(prev => prev.filter(m => m._id !== id));
       toast.success('Medicine deleted successfully');
     } catch (error: any) {
-      console.error('Error deleting medicine:', {
-        message: error.message || 'No message',
-        code: error.code || 'No code',
-        response: error.response ? {
-          status: error.response.status,
-          data: error.response.data,
-          headers: error.response.headers,
-        } : 'No response',
-      });
+      console.error('Error deleting medicine:', error);
       toast.error('Failed to delete medicine');
     } finally {
       setLoading(false);
     }
   };
 
-  // Rest of your code (scheduleNotifications, handleEdit, handleNumberChange, and JSX) remains unchanged
   const scheduleNotifications = (med: Medicine) => {
     const [hours, minutes] = med.time.split(':').map(Number);
     const now = new Date();
@@ -228,11 +202,52 @@ export default function MyMedsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      {/* Navbar */}
+      <nav className="bg-gradient-to-r from-blue-100 to-green-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-20">
+            <div className="flex-shrink-0">
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+                HealthConnect
+              </span>
+            </div>
+
+            <div className="hidden md:flex items-center justify-center flex-1">
+              <div className="flex space-x-1">
+                {[
+                  { name: "Appointments", href: "#" },
+                  { name: "AI Assist", href: "#" },
+                  { name: "Live Consult", href: "#" },
+                  { name: "My Meds", href: "#" }
+                ].map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-100/30 hover:text-blue-600 transition-all duration-200"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button className="px-4 py-2 text-sm font-medium text-blue-600 bg-white/80 border border-blue-200 rounded-lg hover:bg-blue-50 hover:shadow-sm transition-all duration-200">
+                Login
+              </button>
+              <button className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-green-500 rounded-lg shadow-sm hover:from-blue-600 hover:to-green-600 hover:shadow-md transition-all duration-200">
+                Sign Up
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       {/* Hero Section */}
-      <div className="relative w-full h-64 bg-gradient-to-r from-blue-600 to-blue-800 overflow-hidden">
+      <div className="relative w-full h-64 bg-gradient-to-r from-blue-500 to-green-500 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="absolute right-10 bottom-0 w-1/3 h-full bg-blue-700 opacity-20"></div>
+          <div className="absolute right-10 bottom-0 w-1/3 h-full bg-blue-400 opacity-20"></div>
         </div>
         <div className="relative z-10 max-w-7xl mx-auto h-full flex flex-col items-center justify-center px-4 text-center">
           <h1 className="text-4xl font-bold text-white mb-4">MedTrack Pro</h1>
@@ -247,29 +262,29 @@ export default function MyMedsPage() {
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden">
           <div className="md:flex">
             {/* Information Panel */}
-            <div className="md:w-2/5 bg-blue-50 p-8 relative z-10">
+            <div className="md:w-2/5 bg-gradient-to-b from-blue-50 to-green-50 p-8 relative z-10">
               <div className="sticky top-8">
-                <h2 className="text-2xl font-bold text-blue-800 mb-6">Medication Management Made Simple</h2>
+                <h2 className="text-2xl font-bold text-blue-800 mb-6">Medication Management</h2>
                 <div className="space-y-5">
                   <div className="p-4 bg-white rounded-lg shadow-sm border border-blue-100">
-                    <h3 className="font-semibold text-blue-700 mb-2">Why Tracking Matters</h3>
+                    <h3 className="font-semibold text-green-700 mb-2">Why Tracking Matters</h3>
                     <p className="text-blue-600 text-sm">
                       Proper medication adherence can improve treatment outcomes by up to 80% and reduce complications significantly.
                     </p>
                   </div>
                   <div className="p-4 bg-white rounded-lg shadow-sm border border-blue-100">
-                    <h3 className="font-semibold text-blue-700 mb-2">Key Benefits</h3>
+                    <h3 className="font-semibold text-green-700 mb-2">Key Benefits</h3>
                     <ul className="text-blue-600 text-sm space-y-2">
                       <li className="flex items-start">
-                        <span className="text-blue-400 mr-2">•</span>
+                        <span className="text-green-400 mr-2">•</span>
                         Automated reminders for each dose
                       </li>
                       <li className="flex items-start">
-                        <span className="text-blue-400 mr-2">•</span>
+                        <span className="text-green-400 mr-2">•</span>
                         Meal-time coordination
                       </li>
                       <li className="flex items-start">
-                        <span className="text-blue-400 mr-2">•</span>
+                        <span className="text-green-400 mr-2">•</span>
                         Multi-day scheduling
                       </li>
                     </ul>
@@ -281,7 +296,7 @@ export default function MyMedsPage() {
             {/* Form Section */}
             <div className="md:w-3/5 p-8">
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-blue-700 mb-2">
+                <h2 className="text-2xl font-bold text-green-700 mb-2">
                   {editingId ? 'Edit Medication' : 'Create New Reminder'}
                 </h2>
                 <p className="text-blue-600">Fill in your medication details below</p>
@@ -290,13 +305,13 @@ export default function MyMedsPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Medicine Name */}
                 <div className="space-y-1">
-                  <label className="block text-blue-700 font-medium">Medicine Name*</label>
+                  <label className="block text-green-700 font-medium">Medicine Name*</label>
                   <input
                     type="text"
                     value={medicine}
                     onChange={(e) => setMedicine(e.target.value)}
                     placeholder="e.g., Amoxicillin, Lipitor"
-                    className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-blue-400 bg-blue-50 text-blue-900"
+                    className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-blue-400 bg-blue-50 text-blue-900"
                     required
                   />
                 </div>
@@ -304,7 +319,7 @@ export default function MyMedsPage() {
                 {/* Days and Frequency */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-1">
-                    <label className="block text-blue-700 font-medium">Duration (days)*</label>
+                    <label className="block text-green-700 font-medium">Duration (days)*</label>
                     <input
                       type="number"
                       value={days}
@@ -312,13 +327,13 @@ export default function MyMedsPage() {
                       min="1"
                       max="365"
                       placeholder="e.g., 30"
-                      className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50 text-blue-900 placeholder-blue-400"
+                      className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-blue-50 text-blue-900 placeholder-blue-400"
                       required
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-blue-700 font-medium">Times per day*</label>
+                    <label className="block text-green-700 font-medium">Times per day*</label>
                     <input
                       type="number"
                       value={frequency}
@@ -326,7 +341,7 @@ export default function MyMedsPage() {
                       min="1"
                       max="10"
                       placeholder="e.g., 2"
-                      className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50 text-blue-900 placeholder-blue-400"
+                      className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-blue-50 text-blue-900 placeholder-blue-400"
                       required
                     />
                   </div>
@@ -335,13 +350,13 @@ export default function MyMedsPage() {
                 {/* Time and Meal Relation */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-1">
-                    <label className="block text-blue-700 font-medium">First Dose Time*</label>
+                    <label className="block text-green-700 font-medium">First Dose Time*</label>
                     <div className="relative">
                       <input
                         type="time"
                         value={time}
                         onChange={(e) => setTime(e.target.value)}
-                        className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50 text-blue-900"
+                        className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-blue-50 text-blue-900"
                         required
                       />
                       {!time && (
@@ -353,11 +368,11 @@ export default function MyMedsPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-blue-700 font-medium">Meal Relation*</label>
+                    <label className="block text-green-700 font-medium">Meal Relation*</label>
                     <select
                       value={mealTime}
                       onChange={(e) => setMealTime(e.target.value as 'before' | 'after' | 'anytime')}
-                      className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50 text-blue-900"
+                      className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 bg-blue-50 text-blue-900"
                     >
                       <option value="before">Before eating</option>
                       <option value="after">After eating</option>
@@ -369,7 +384,7 @@ export default function MyMedsPage() {
                 <div className="flex space-x-4">
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-800 text-white font-semibold rounded-lg px-4 py-4 hover:from-blue-700 hover:to-blue-900 transition-all duration-300 shadow-md hover:shadow-lg"
+                    className="flex-1 bg-gradient-to-r from-green-500 to-blue-500 text-white font-semibold rounded-lg px-4 py-4 hover:from-green-600 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg"
                     disabled={loading}
                   >
                     {loading ? 'Processing...' : editingId ? 'Update Reminder' : 'Set Reminder'}
@@ -397,8 +412,8 @@ export default function MyMedsPage() {
               {medicines.length > 0 && (
                 <div className="mt-12">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-xl font-semibold text-blue-800">Your Medication Schedule</h2>
-                    <span className="text-sm bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                    <h2 className="text-xl font-semibold text-green-800">Your Medication Schedule</h2>
+                    <span className="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full">
                       {medicines.length} active reminder{medicines.length !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -410,7 +425,7 @@ export default function MyMedsPage() {
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="font-medium text-blue-900">{med.name}</span>
+                            <span className="font-medium text-green-900">{med.name}</span>
                             <div className="text-sm text-blue-600 mt-1">
                               {med.frequency}x/day • {med.days} day{med.days !== 1 ? 's' : ''}
                             </div>
@@ -429,7 +444,7 @@ export default function MyMedsPage() {
                             </button>
                             <button
                               onClick={() => med._id && handleDelete(med._id)}
-                              className="text-red-500 hover:text-red-700"
+                              className="text-red-400 hover:text-red-600"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -453,22 +468,22 @@ export default function MyMedsPage() {
       {/* Additional Information Section */}
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="bg-white rounded-xl p-8 shadow-lg border border-blue-100">
-          <h2 className="text-2xl font-bold text-center text-blue-800 mb-6">Understanding Medication Adherence</h2>
+          <h2 className="text-2xl font-bold text-center text-green-700 mb-6">Understanding Medication Adherence</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-blue-50 p-6 rounded-lg">
-              <h3 className="font-semibold text-blue-700 mb-3">The Importance of Timing</h3>
+              <h3 className="font-semibold text-green-700 mb-3">The Importance of Timing</h3>
               <p className="text-blue-600 text-sm">
                 Taking medications at consistent times maintains stable drug levels in your bloodstream for optimal effectiveness.
               </p>
             </div>
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <h3 className="font-semibold text-blue-700 mb-3">Meal Interactions</h3>
+            <div className="bg-green-50 p-6 rounded-lg">
+              <h3 className="font-semibold text-green-700 mb-3">Meal Interactions</h3>
               <p className="text-blue-600 text-sm">
                 Some medications work better when taken with food, while others should be taken on an empty stomach.
               </p>
             </div>
             <div className="bg-blue-50 p-6 rounded-lg">
-              <h3 className="font-semibold text-blue-700 mb-3">Dosage Frequency</h3>
+              <h3 className="font-semibold text-green-700 mb-3">Dosage Frequency</h3>
               <p className="text-blue-600 text-sm">
                 Multiple daily doses help maintain therapeutic levels and prevent side effects from dosage spikes.
               </p>
@@ -480,7 +495,7 @@ export default function MyMedsPage() {
       <ToastContainer
         position="bottom-right"
         toastClassName="bg-blue-50 text-blue-900 border border-blue-200"
-        progressClassName="bg-gradient-to-r from-blue-400 to-blue-600"
+        progressClassName="bg-gradient-to-r from-blue-400 to-green-400"
       />
     </div>
   );
