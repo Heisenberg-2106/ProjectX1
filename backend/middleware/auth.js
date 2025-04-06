@@ -1,7 +1,8 @@
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+// auth.js
+import jwt from 'jsonwebtoken';
+import 'dotenv/config';
 
-module.exports = async (req, res, next) => {
+export const protect = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) throw new Error('Authentication required');

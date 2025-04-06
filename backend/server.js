@@ -198,6 +198,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
-app.use('/api/appointments', appointmentRoutes);
-app.use('/api/auth', authRoutes); // Moves register/login here
 

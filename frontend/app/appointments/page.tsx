@@ -1,14 +1,82 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import "@/globals.css";
+import { useState } from "react";
+
+interface Doctor {
+    id: number;
+    name: string;
+    specialty: string;
+    rating: number;
+    reviews: number;
+    location: string;
+    image: string;
+    availability: string[];
+}
+
+interface Appointment {
+    doctor: string;
+    time: string;
+    location: string;
+}
 
 export default function AppointmentPage() {
+    // State for selected doctor and appointment
+    const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    
+    const doctors: Doctor[] = [
+        {
+            id: 1,
+            name: "Dr. Sarah Johnson",
+            specialty: "General Practitioner",
+            rating: 4.9,
+            reviews: 128,
+            location: "Main Hospital",
+            image: "/doctor1.jpg",
+            availability: ["Mon 10am", "Tue 2pm", "Wed 4pm", "Fri 9am"]
+        },
+        {
+            id: 2,
+            name: "Dr. Michael Chen",
+            specialty: "Cardiologist",
+            rating: 4.8,
+            reviews: 95,
+            location: "Downtown Clinic",
+            image: "/doctor2.jpg",
+            availability: ["Tue 11am", "Thu 3pm", "Sat 10am"]
+        },{
+            id: 3,
+            name: "Dr. Priya Patel",
+            specialty: "Dermatologist",
+            rating: 4.7,
+            reviews: 76,
+            location: "Northside Medical Center",
+            image: "/doctor3.jpg",
+            availability: ["Mon 1pm", "Wed 10am", "Fri 2pm"]
+        }
+    ];
+
+    const handleBookAppointment = (doctor: Doctor, time: string) => {
+        setSelectedAppointment({
+            doctor: doctor.name,
+            time: time,
+            location: doctor.location
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleConfirm = () => {
+        console.log("Appointment confirmed:", selectedAppointment);
+        setIsModalOpen(false);
+        setSelectedAppointment(null);
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white">
             <Navbar />
             
             <main className="flex-grow">
-                {/* Hero Section */}
                 <section className="py-16 bg-gradient-to-r from-blue-500 to-green-500 text-white">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                         <h1 className="text-4xl md:text-5xl font-bold mb-6">Book Your Appointment</h1>
@@ -18,11 +86,9 @@ export default function AppointmentPage() {
                     </div>
                 </section>
 
-                {/* Appointment Booking Section */}
                 <section className="py-20 bg-white">
                     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="grid md:grid-cols-3 gap-12">
-                            {/* Doctor Selection */}
                             <div className="md:col-span-1 bg-gray-50 p-6 rounded-xl shadow-sm">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Find a Doctor</h2>
                                 
@@ -75,48 +141,15 @@ export default function AppointmentPage() {
                                 </button>
                             </div>
                             
-                            {/* Doctor Listings */}
                             <div className="md:col-span-2">
                                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Available Doctors</h2>
                                 
                                 <div className="space-y-6">
-                                    {[
-                                        {
-                                            id: 1,
-                                            name: "Dr. Sarah Johnson",
-                                            specialty: "General Practitioner",
-                                            rating: 4.9,
-                                            reviews: 128,
-                                            location: "Main Hospital",
-                                            image: "/doctor1.jpg",
-                                            availability: ["Mon 10am", "Tue 2pm", "Wed 4pm", "Fri 9am"]
-                                        },
-                                        {
-                                            id: 2,
-                                            name: "Dr. Michael Chen",
-                                            specialty: "Cardiologist",
-                                            rating: 4.8,
-                                            reviews: 95,
-                                            location: "Downtown Clinic",
-                                            image: "/doctor2.jpg",
-                                            availability: ["Tue 11am", "Thu 3pm", "Sat 10am"]
-                                        },
-                                        {
-                                            id: 3,
-                                            name: "Dr. Priya Patel",
-                                            specialty: "Dermatologist",
-                                            rating: 4.7,
-                                            reviews: 76,
-                                            location: "Northside Medical Center",
-                                            image: "/doctor3.jpg",
-                                            availability: ["Mon 1pm", "Wed 10am", "Fri 2pm"]
-                                        }
-                                    ].map(doctor => (
+                                    {doctors.map(doctor => (
                                         <div key={doctor.id} className="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:border-blue-200 transition">
                                             <div className="flex flex-col md:flex-row gap-6">
                                                 <div className="flex-shrink-0">
                                                     <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden">
-                                                        {/* Replace with actual image */}
                                                         <div className="w-full h-full bg-blue-100 flex items-center justify-center text-blue-500 text-2xl font-bold">
                                                             {doctor.name.charAt(0)}
                                                         </div>
@@ -156,6 +189,7 @@ export default function AppointmentPage() {
                                                             {doctor.availability.map((time, i) => (
                                                                 <button 
                                                                     key={i}
+                                                                    onClick={() => handleBookAppointment(doctor, time)}
                                                                     className="px-3 py-1.5 bg-white border border-blue-200 text-blue-600 text-sm rounded-lg hover:bg-blue-50 hover:border-blue-300 transition"
                                                                 >
                                                                     {time}
@@ -173,52 +207,60 @@ export default function AppointmentPage() {
                     </div>
                 </section>
 
-                {/* Confirmation Modal (hidden by default) */}
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
-                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-gray-800">Confirm Appointment</h3>
-                            <button className="text-gray-400 hover:text-gray-600">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-sm text-gray-500">Doctor</p>
-                                <p className="font-medium">Dr. Sarah Johnson</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Date & Time</p>
-                                <p className="font-medium">Monday, June 12 at 10:00 AM</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-500">Location</p>
-                                <p className="font-medium">Main Hospital</p>
+                {/* Confirmation Modal */}
+                {isModalOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-gray-800">Confirm Appointment</h3>
+                                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                             </div>
                             
-                            <div className="pt-4 mt-4 border-t border-gray-200">
-                                <label className="flex items-start">
-                                    <input type="checkbox" className="mt-1 h-4 w-4 text-blue-600" />
-                                    <span className="ml-2 text-sm text-gray-600">
-                                        I agree to the <a href="#" className="text-blue-500 hover:underline">terms and conditions</a> and understand the cancellation policy.
-                                    </span>
-                                </label>
-                            </div>
-                            
-                            <div className="flex justify-end space-x-3 pt-4">
-                                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                                    Cancel
-                                </button>
-                                <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
-                                    Confirm Appointment
-                                </button>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-sm text-gray-500">Doctor</p>
+                                    <p className="font-medium">{selectedAppointment?.doctor}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500">Date & Time</p>
+                                    <p className="font-medium">{selectedAppointment?.time}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-500">Location</p>
+                                    <p className="font-medium">{selectedAppointment?.location}</p>
+                                </div>
+                                
+                                <div className="pt-4 mt-4 border-t border-gray-200">
+                                    <label className="flex items-start">
+                                        <input type="checkbox" className="mt-1 h-4 w-4 text-blue-600" />
+                                        <span className="ml-2 text-sm text-gray-600">
+                                            I agree to the <a href="#" className="text-blue-500 hover:underline">terms and conditions</a> and understand the cancellation policy.
+                                        </span>
+                                    </label>
+                                </div>
+                                
+                                <div className="flex justify-end space-x-3 pt-4">
+                                    <button 
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={handleConfirm}
+                                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                                    >
+                                        Confirm Appointment
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </main>
             
             <Footer />
