@@ -43,7 +43,7 @@ export default function AuthPage() {
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
         toast.success(isLogin ? "Login successful!" : "Registration successful!");
-        router.push("/my-meds");
+        router.push("/appointments");
       }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || "An error occurred";

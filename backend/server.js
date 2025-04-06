@@ -1,21 +1,23 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
-const jwt = require("jwtoken");
+const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const axios = require("axios");
-const http = require("http"); // Added for Socket.IO
-const { Server } = require("socket.io"); // Added for Socket.IO
+const http = require("http");
+const { Server } = require("socket.io");
+const multer = require("multer");
+const Tesseract = require("tesseract.js");
 
 dotenv.config();
 
 const app = express();
-const server = http.createServer(app); // Create HTTP server for Socket.IO
+const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000", // Match frontend URL
+    origin: "http://localhost:3000",
     methods: ["GET", "POST"],
   },
 });
@@ -25,21 +27,26 @@ const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const JWT_SECRET = process.env.JWT_SECRET;
+const API_KEY = process.env.API_KEY;
 
-// Validate critical environment variables
-if (!MONGODB_URI || !OPENROUTER_API_KEY || !JWT_SECRET) {
+// Validate environment variables
+if (!MONGODB_URI || !OPENROUTER_API_KEY || !JWT_SECRET || !API_KEY) {
   console.error("❌ Missing required environment variables");
   process.exit(1);
 }
 
+// Middleware setup
 app.use(express.json());
 app.use(cors({
   origin: "http://localhost:3000",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],
 }));
 
+const upload = multer();
+
+// Database connection
 async function main() {
   try {
     await mongoose.connect(MONGODB_URI, {
@@ -56,7 +63,16 @@ async function main() {
 
 main().catch(console.error);
 
-// Registration Route
+// API Key Middleware
+const verifyApiKey = (req, res, next) => {
+  const clientKey = req.headers["x-api-key"];
+  if (clientKey !== API_KEY) {
+    return res.status(403).json({ error: "Invalid API Key" });
+  }
+  next();
+};
+
+// Routes
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -76,8 +92,7 @@ app.post("/api/auth/register", async (req, res) => {
       password: hashedPassword,
     });
     await user.save();
-    console.log("User registered and saved to MongoDB:", user);
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
     res.status(201).json({ token });
   } catch (error) {
     console.error("Registration error:", error);
@@ -85,7 +100,6 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// Login Route
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -100,12 +114,71 @@ app.post("/api/auth/login", async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-    console.log("User logged in:", user.email);
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
     res.status(200).json({ token });
   } catch (error) {
     console.error("Login error:", error);
     res.status(400).json({ message: error.message });
+  }
+});
+
+// Prescription Scanning Route
+app.post("/scan-prescription", verifyApiKey, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Enhanced medicine patterns
+    const MEDICINE_PATTERNS = [
+      // Pattern 1: "MedicineName 200mg take 2 times daily for 5 days"
+      /([A-Za-z]+)\s+\d+\s*mg\s+(?:take\s+)?(\d+)\s*(?:times\s+)?daily\s+(?:for\s+)?(\d+)\s*days/gi,
+      
+      // Pattern 2: "Take MedicineName 500mg twice daily for 7 days"
+      /Take\s+([A-Za-z]+)\s+\d+\s*mg\s+(?:once|twice|thrice|\d+\s*times)\s+daily\s+(?:for\s+)?(\d+)\s*days/gi,
+      
+      // Pattern 3: "MedicineName 200mg - 1 tab 2 times a day x 5 days"
+      /([A-Za-z]+)\s+\d+\s*mg\s+-\s+\d+\s*tab\s+(\d+)\s*times\s+a\s+day\s+x\s+(\d+)\s*days/gi,
+      
+      // Pattern 4: Simple format "MedicineName 200mg 5 days"
+      /([A-Za-z]+)\s+\d+\s*mg\s+(\d+)\s*days/gi
+    ];
+
+    const { data: { text } } = await Tesseract.recognize(req.file.buffer, "eng");
+    
+    let results = [];
+    for (const pattern of MEDICINE_PATTERNS) {
+      const matches = [...text.matchAll(pattern)];
+      matches.forEach(match => {
+        const medicine = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+        const frequency = match[2] ? parseInt(match[2]) : 1;
+        const days = match[3] ? parseInt(match[3]) : (match[2] ? parseInt(match[2]) : 1);
+        
+        results.push({
+          medicine,
+          frequency,
+          days_prescribed: days,
+          matched_pattern: pattern.toString()
+        });
+      });
+    }
+
+    // Remove duplicates
+    const uniqueResults = results.filter((v, i, a) => 
+      a.findIndex(t => (t.medicine === v.medicine && t.days_prescribed === v.days_prescribed)) === i
+    );
+
+    res.json({
+      extracted_text: text,
+      prescription_details: uniqueResults,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("OCR error:", error);
+    res.status(500).json({ 
+      error: "Failed to process image",
+      details: error.message 
+    });
   }
 });
 
@@ -114,24 +187,21 @@ app.use("/medicines", medicineRoutes);
 
 // Chatbot Route
 app.post("/chat", async (req, res) => {
-  const { message, history } = req.body;
-
-  // Validate input
-  if (!message || !Array.isArray(history)) {
-    return res.status(400).json({ message: "Message and history array are required" });
-  }
-
-  // Add system prompt to restrict to medical topics
-  const messages = [
-    {
-      role: "system",
-      content: "You are a helpful and knowledgeable medical assistant. Only answer questions strictly related to health, medicine, diseases, treatments, symptoms, and wellness. If a question is unrelated to health, politely decline to answer."
-    },
-    ...history,
-    { role: "user", content: message }
-  ];
-
   try {
+    const { message, history } = req.body;
+    if (!message || !Array.isArray(history)) {
+      return res.status(400).json({ message: "Message and history array are required" });
+    }
+
+    const messages = [
+      {
+        role: "system",
+        content: "You are a helpful medical assistant. Provide accurate health information."
+      },
+      ...history,
+      { role: "user", content: message }
+    ];
+
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -146,26 +216,26 @@ app.post("/chat", async (req, res) => {
       }
     );
 
-    const reply = response.data.choices[0].message.content;
-    res.json({ reply });
+    res.json({ reply: response.data.choices[0].message.content });
   } catch (err) {
-    console.error("❌ Error calling OpenRouter API:", err?.response?.data || err.message);
-    res.status(500).json({ error: "Failed to get response from AI model" });
+    console.error("Chat error:", err?.response?.data || err.message);
+    res.status(500).json({ error: "Failed to get AI response" });
   }
-})
-
+});
 
 // Summary Route
 app.post("/summary", async (req, res) => {
-  const { history } = req.body;
-  if (!Array.isArray(history)) {
-    return res.status(400).json({ message: "History array is required" });
-  }
-  const messages = [
-    { role: "system", content: "Summarize this medical conversation for a doctor." },
-    ...history,
-  ];
   try {
+    const { history } = req.body;
+    if (!Array.isArray(history)) {
+      return res.status(400).json({ message: "History array is required" });
+    }
+
+    const messages = [
+      { role: "system", content: "Summarize this medical conversation for a doctor." },
+      ...history,
+    ];
+
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
@@ -179,15 +249,15 @@ app.post("/summary", async (req, res) => {
         },
       }
     );
-    const summary = response.data.choices[0].message.content;
-    res.json({ summary });
+
+    res.json({ summary: response.data.choices[0].message.content });
   } catch (err) {
-    console.error("❌ Error calling summary API:", err?.response?.data || err.message);
+    console.error("Summary error:", err?.response?.data || err.message);
     res.status(500).json({ error: "Failed to summarize conversation" });
   }
 });
 
-// Socket.IO Signaling for WebRTC
+// WebSocket Signaling
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -213,25 +283,27 @@ io.on("connection", (socket) => {
   });
 });
 
-// Root Route
+// Health Check
 app.get("/", (req, res) => {
-  res.send(`Server is running on port ${PORT}`); // Updated to reflect actual port
-});
-
-// Catch-All Route for 404s
-app.use((req, res) => {
-  res.status(404).json({
-    message: `Route ${req.method} ${req.originalUrl} not found`,
+  res.json({
+    status: "healthy",
+    version: "1.0.0",
+    services: ["auth", "chat", "ocr", "webrtc"]
   });
 });
 
-// Global Error Handler
+// Error Handling
 app.use((err, req, res, next) => {
-  console.error("❌ Server Error:", err.stack);
-  res.status(500).json({ message: "Something went wrong on the server" });
+  console.error("Server error:", err.stack);
+  res.status(500).json({ error: "Internal server error" });
 });
 
 // Start Server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🔒 API Key required for /scan-prescription`);
+  console.log(`💊 Medicine routes: /medicines`);
+  console.log(`🤖 Chat endpoint: /chat`);
+  console.log(`📝 Summary endpoint: /summary`);
+  console.log(`📷 Prescription scan: /scan-prescription`);
 });

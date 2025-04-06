@@ -16,11 +16,11 @@ export default function Navbar() {
                     <div className="hidden md:flex items-center justify-center flex-1">
                         <div className="flex space-x-1">
                             {[
-                                { name: "Appointments", href: "appointemnts" },
+                                { name: "Appointments", href: "appointments" },
                                 { name: "AI Assist", href: "chatbot" },
                                 { name: "Live Consult", href: "videocall" },
                                 { name: "My Meds", href: "mymeds" },
-                                { name: "Prescription Scan", href: "prescription" }
+                                { name: "Prescription Scan", href: "scanner" }
                             ].map((item) => (
                                 <Link
                                     key={item.name}
@@ -35,12 +35,16 @@ export default function Navbar() {
 
                     {/* Auth buttons on the right */}
                     <div className="flex items-center space-x-2">
+                        <Link href="register">
                         <button className="px-4 py-2 text-sm font-medium text-blue-600 bg-white/80 border border-blue-200 rounded-lg hover:bg-blue-50 hover:shadow-sm transition-all duration-200">
                             Login
                         </button>
+                        </Link>
+                        <Link href="register">
                         <button className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-green-500 rounded-lg shadow-sm hover:from-blue-600 hover:to-green-600 hover:shadow-md transition-all duration-200">
                             Sign Up
                         </button>
+                        </Link>
                     </div>
                 </div>
             </div>
