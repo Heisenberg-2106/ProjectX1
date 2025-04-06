@@ -17,9 +17,9 @@ export default function Navbar() {
                         <div className="flex space-x-1">
                             {[
                                 { name: "Appointments", href: "#" },
-                                { name: "AI Assist", href: "#" },
-                                { name: "Live Consult", href: "#" },
-                                { name: "My Meds", href: "#" }
+                                { name: "AI Assist", href: "ChatBot" },
+                                { name: "Live Consult", href: "webrtc" },
+                                { name: "My Meds", href: "mymeds" }
                             ].map((item) => (
                                 <Link
                                     key={item.name}
