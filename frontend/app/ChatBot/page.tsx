@@ -310,7 +310,7 @@ export default function ChatbotPage() {
               </div>
               
               <div className="mt-3 flex justify-end">
-                <button 
+                {/* <button 
                   onClick={summarizeConversation}
                   disabled={messages.length === 0}
                   className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-2 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 shadow-md hover:shadow-lg disabled:opacity-70 flex items-center gap-1 text-sm"
@@ -319,7 +319,7 @@ export default function ChatbotPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   Summarize Conversation
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
