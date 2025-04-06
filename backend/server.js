@@ -14,23 +14,33 @@ const medicineRoutes = require("./routes/medicine");
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const JWT_SECRET = process.env.JWT_SECRET; // Added for validation
+
+// Validate critical environment variables
+if (!MONGODB_URI || !OPENROUTER_API_KEY || !JWT_SECRET) {
+  console.error("❌ Missing required environment variables");
+  process.exit(1);
+}
 
 app.use(express.json());
-app.use(cors());
-
-const corsOptions = {
+app.use(cors({
   origin: 'http://localhost:3000', // Your Next.js frontend URL
   credentials: true, // If using cookies
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
+}));
 
 async function main() {
   try {
-    await mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+    await mongoose.connect(MONGODB_URI, { 
+      useNewUrlParser: true, 
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000 // Added timeout
+    });
     console.log("✅ MongoDB connection successful");
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
+    process.exit(1); // Exit on connection failure
   }
 }
 
@@ -122,6 +132,11 @@ app.use("/medicines", medicineRoutes);
 app.post("/chat", async (req, res) => {
   const { message, history } = req.body;
 
+  // Validate input
+  if (!message || !Array.isArray(history)) {
+    return res.status(400).json({ message: "Message and history array are required" });
+  }
+
   const messages = [...history, { role: "user", content: message }];
 
   try {
@@ -150,6 +165,11 @@ app.post("/chat", async (req, res) => {
 // Summary Route
 app.post("/summary", async (req, res) => {
   const { history } = req.body;
+
+  // Validate input
+  if (!Array.isArray(history)) {
+    return res.status(400).json({ message: "History array is required" });
+  }
 
   const messages = [
     { role: "system", content: "Summarize this medical conversation for a doctor." },
@@ -191,9 +211,13 @@ app.use((req, res) => {
   });
 });
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error("❌ Server Error:", err.stack);
+  res.status(500).json({ message: "Something went wrong on the server" });
+});
+
 // Default to 5000 if PORT not set in .env
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
-
-
