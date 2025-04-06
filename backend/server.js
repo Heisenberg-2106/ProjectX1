@@ -1,20 +1,30 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const User = require("./models/User"); // Ensure this path is correct
-const cors = require('cors');
+const jwt = require("jwtoken");
+const User = require("./models/User");
+const cors = require("cors");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const axios = require("axios");
+const http = require("http"); // Added for Socket.IO
+const { Server } = require("socket.io"); // Added for Socket.IO
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app); // Create HTTP server for Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000", // Match frontend URL
+    methods: ["GET", "POST"],
+  },
+});
+
 const medicineRoutes = require("./routes/medicine");
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const JWT_SECRET = process.env.JWT_SECRET; // Added for validation
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Validate critical environment variables
 if (!MONGODB_URI || !OPENROUTER_API_KEY || !JWT_SECRET) {
@@ -24,23 +34,23 @@ if (!MONGODB_URI || !OPENROUTER_API_KEY || !JWT_SECRET) {
 
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:3000', // Your Next.js frontend URL
-  credentials: true, // If using cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: "http://localhost:3000",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
 async function main() {
   try {
-    await mongoose.connect(MONGODB_URI, { 
-      useNewUrlParser: true, 
+    await mongoose.connect(MONGODB_URI, {
+      useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000 // Added timeout
+      serverSelectionTimeoutMS: 5000,
     });
     console.log("✅ MongoDB connection successful");
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
-    process.exit(1); // Exit on connection failure
+    process.exit(1);
   }
 }
 
@@ -50,41 +60,27 @@ main().catch(console.error);
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { username, email, password } = req.body;
-
-    // Validate input
     if (!username || !email || !password) {
       return res.status(400).json({
         message: "All fields (username, email, password) are required",
       });
     }
-
-    // Check for existing user
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User with this email already exists" });
     }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
-
-    // Create and save the new user
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({
       username,
       email,
-      password: hashedPassword, // Save hashed password
+      password: hashedPassword,
     });
     await user.save();
-
-    // Log to confirm the user was saved
     console.log("User registered and saved to MongoDB:", user);
-
-    // Generate JWT
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-
-    // Send response
     res.status(201).json({ token });
   } catch (error) {
-    console.error("Registration error:", error); // Log error for debugging
+    console.error("Registration error:", error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -93,34 +89,22 @@ app.post("/api/auth/register", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
-
-    // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    // Compare password with hashed password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    // Log successful login
     console.log("User logged in:", user.email);
-
-    // Generate JWT
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-
-    // Send response
     res.status(200).json({ token });
   } catch (error) {
-    console.error("Login error:", error); // Log error for debugging
+    console.error("Login error:", error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -137,7 +121,33 @@ app.post("/chat", async (req, res) => {
     return res.status(400).json({ message: "Message and history array are required" });
   }
 
-  const messages = [...history, { role: "user", content: message }];
+  // Define medical keywords
+  const medicalKeywords = [
+    "symptom", "treatment", "disease", "medicine", "illness", "health", "wellness", "pain",
+    "doctor", "fever", "infection", "injury", "diagnosis", "prescription", "medication",
+    "therapy", "cough", "headache", "vomiting", "surgery", "specialist", "dizziness", "anxiety",
+    "depression", "mental health", "vaccine", "covid", "cold", "flu", "clinic", "hospital"
+  ];
+
+  const isMedical = medicalKeywords.some(keyword =>
+    message.toLowerCase().includes(keyword)
+  );
+
+  if (!isMedical) {
+    return res.status(400).json({
+      message: "❌ Please ask a question related to health or medicine."
+    });
+  }
+
+  // System prompt for the model
+  const messages = [
+    {
+      role: "system",
+      content: "You are a helpful and knowledgeable medical assistant. Only answer questions strictly related to health, medicine, diseases, treatments, symptoms, and wellness. Politely refuse anything else."
+    },
+    ...history,
+    { role: "user", content: message }
+  ];
 
   try {
     const response = await axios.post(
@@ -162,20 +172,17 @@ app.post("/chat", async (req, res) => {
   }
 });
 
+
 // Summary Route
 app.post("/summary", async (req, res) => {
   const { history } = req.body;
-
-  // Validate input
   if (!Array.isArray(history)) {
     return res.status(400).json({ message: "History array is required" });
   }
-
   const messages = [
     { role: "system", content: "Summarize this medical conversation for a doctor." },
     ...history,
   ];
-
   try {
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -190,7 +197,6 @@ app.post("/summary", async (req, res) => {
         },
       }
     );
-
     const summary = response.data.choices[0].message.content;
     res.json({ summary });
   } catch (err) {
@@ -199,9 +205,35 @@ app.post("/summary", async (req, res) => {
   }
 });
 
+// Socket.IO Signaling for WebRTC
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-joined", socket.id);
+  });
+
+  socket.on("offer", ({ offer, to }) => {
+    io.to(to).emit("offer", { offer, from: socket.id });
+  });
+
+  socket.on("answer", ({ answer, to }) => {
+    io.to(to).emit("answer", { answer, from: socket.id });
+  });
+
+  socket.on("ice-candidate", ({ candidate, to }) => {
+    io.to(to).emit("ice-candidate", { candidate, from: socket.id });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
 // Root Route
 app.get("/", (req, res) => {
-  res.send("Server is running on port 3000");
+  res.send(`Server is running on port ${PORT}`); // Updated to reflect actual port
 });
 
 // Catch-All Route for 404s
@@ -217,7 +249,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Something went wrong on the server" });
 });
 
-// Default to 5000 if PORT not set in .env
-app.listen(PORT, () => {
+// Start Server
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

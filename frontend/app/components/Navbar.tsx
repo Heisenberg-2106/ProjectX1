@@ -16,10 +16,11 @@ export default function Navbar() {
                     <div className="hidden md:flex items-center justify-center flex-1">
                         <div className="flex space-x-1">
                             {[
-                                { name: "Appointments", href: "#" },
-                                { name: "AI Assist", href: "ChatBot" },
-                                { name: "Live Consult", href: "webrtc" },
-                                { name: "My Meds", href: "mymeds" }
+                                { name: "Appointments", href: "appointemnts" },
+                                { name: "AI Assist", href: "chatbot" },
+                                { name: "Live Consult", href: "videocall" },
+                                { name: "My Meds", href: "mymeds" },
+                                { name: "Prescription Scan", href: "prescription" }
                             ].map((item) => (
                                 <Link
                                     key={item.name}
