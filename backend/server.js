@@ -121,29 +121,11 @@ app.post("/chat", async (req, res) => {
     return res.status(400).json({ message: "Message and history array are required" });
   }
 
-  // Define medical keywords
-  const medicalKeywords = [
-    "symptom", "treatment", "disease", "medicine", "illness", "health", "wellness", "pain",
-    "doctor", "fever", "infection", "injury", "diagnosis", "prescription", "medication",
-    "therapy", "cough", "headache", "vomiting", "surgery", "specialist", "dizziness", "anxiety",
-    "depression", "mental health", "vaccine", "covid", "cold", "flu", "clinic", "hospital"
-  ];
-
-  const isMedical = medicalKeywords.some(keyword =>
-    message.toLowerCase().includes(keyword)
-  );
-
-  if (!isMedical) {
-    return res.status(400).json({
-      message: "❌ Please ask a question related to health or medicine."
-    });
-  }
-
-  // System prompt for the model
+  // Add system prompt to restrict to medical topics
   const messages = [
     {
       role: "system",
-      content: "You are a helpful and knowledgeable medical assistant. Only answer questions strictly related to health, medicine, diseases, treatments, symptoms, and wellness. Politely refuse anything else."
+      content: "You are a helpful and knowledgeable medical assistant. Only answer questions strictly related to health, medicine, diseases, treatments, symptoms, and wellness. If a question is unrelated to health, politely decline to answer."
     },
     ...history,
     { role: "user", content: message }
@@ -170,7 +152,7 @@ app.post("/chat", async (req, res) => {
     console.error("❌ Error calling OpenRouter API:", err?.response?.data || err.message);
     res.status(500).json({ error: "Failed to get response from AI model" });
   }
-});
+})
 
 
 // Summary Route
