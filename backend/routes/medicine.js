@@ -1,15 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const Medicine = require('../models/Medicine');
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
-// Add new medicine
-router.post('/', auth, async (req, res) => {
+// @route   POST /medicines
+// @desc    Add new medicine
+// @access  Private
+router.post('/', protect, async (req, res) => {
   try {
+    const { name, dosage, frequency } = req.body;
+    
+    // Basic input validation
+    if (!name || !dosage || !frequency) {
+      return res.status(400).json({ message: 'Name, dosage, and frequency are required' });
+    }
+
     const medicine = new Medicine({
       userId: req.userId,
       ...req.body
     });
+    
     await medicine.save();
     res.status(201).json(medicine);
   } catch (error) {
@@ -17,42 +27,63 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Get all medicines for user
-router.get('/', auth, async (req, res) => {
+// @route   GET /medicines
+// @desc    Get all medicines for user
+// @access  Private
+router.get('/', protect, async (req, res) => {
   try {
-    const medicines = await Medicine.find({ userId: req.userId }).sort({ createdAt: -1 });
+    const medicines = await Medicine.find({ userId: req.userId })
+      .sort({ createdAt: -1 });
     res.json(medicines);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
 
-// Update a medicine
-router.put('/:id', auth, async (req, res) => {
+// @route   PUT /medicines/:id
+// @desc    Update a medicine
+// @access  Private
+router.put('/:id', protect, async (req, res) => {
   try {
+    if (!Medicine.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid medicine ID' });
+    }
+
     const medicine = await Medicine.findOneAndUpdate(
       { _id: req.params.id, userId: req.userId },
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
-    if (!medicine) return res.status(404).json({ message: 'Medicine not found' });
+    
+    if (!medicine) {
+      return res.status(404).json({ message: 'Medicine not found' });
+    }
     res.json(medicine);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-// Delete a medicine
-router.delete('/:id', auth, async (req, res) => {
+// @route   DELETE /medicines/:id
+// @desc    Delete a medicine
+// @access  Private
+router.delete('/:id', protect, async (req, res) => {
   try {
+    if (!Medicine.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid medicine ID' });
+    }
+
     const medicine = await Medicine.findOneAndDelete({
       _id: req.params.id,
       userId: req.userId
     });
-    if (!medicine) return res.status(404).json({ message: 'Medicine not found' });
+    
+    if (!medicine) {
+      return res.status(404).json({ message: 'Medicine not found' });
+    }
     res.json({ message: 'Medicine deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
 
