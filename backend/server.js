@@ -14,8 +14,6 @@ const medicineRoutes = require("./routes/medicine");
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const appointmentRoutes = require('./routes/appointmentRoutes');
-
 
 app.use(express.json());
 app.use(cors());
