@@ -1,15 +1,31 @@
 import express from 'express';
-import { protect } from '../middleware/auth.js';
 import {
   createAppointment,
   getUserAppointments,
   cancelAppointment,
 } from '../controllers/appointmentController.js';
+import { protect, restrictTo } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.route('/').post(protect, createAppointment);
-router.route('/myappointments').get(protect, getUserAppointments);
-router.route('/:id/cancel').put(protect, cancelAppointment);
+// Protect all routes after this middleware
+router.use(protect);
+
+// Appointment creation and listing
+router.route('/')
+  .post(
+    restrictTo('patient'), 
+    createAppointment
+  )
+  .get(
+    getUserAppointments
+  );
+
+// Individual appointment management
+router.route('/:id/cancel')
+  .put(
+    restrictTo('patient'),
+    cancelAppointment
+  );
 
 export default router;

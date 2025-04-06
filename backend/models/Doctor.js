@@ -72,10 +72,11 @@ const doctorSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    collection: 'doctors' // Explicitly set the collection name
   }
 );
 
-// Ensure model is not registered multiple times during dev
+// Create the model if it doesn't exist
 const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', doctorSchema);
 
 export default Doctor;
